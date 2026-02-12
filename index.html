@@ -17,6 +17,18 @@
             --border-radius: 8px;
         }
 
+        /* モバイル用基準フォントサイズ（一段階小さく） */
+        html {
+            font-size: 14px;
+        }
+
+        /* PC・タブレット用基準フォントサイズ */
+        @media (min-width: 600px) {
+            html {
+                font-size: 16px;
+            }
+        }
+
         /* 全体スタイリング */
         body {
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
