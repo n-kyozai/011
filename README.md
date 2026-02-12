@@ -1,2 +1,954 @@
-# 011
-# 教員採用試験対策：地理歴史科学習指導要領クイズ  高等学校学習指導要領（平成30年告示）地理歴史科の目標や内容の取扱いに関する演習クイズアプリです。 教員採用試験対策として、隙間時間にスマートフォン等で手軽に学習できることを目的に作成しました。  ## 特徴 - 外部ライブラリ不使用の軽量な単一HTMLファイル - スマホ対応（完全レスポンシブ） - 間違えた問題だけを繰り返す「復習モード」搭載 - 知識の定着を図る「穴埋め暗記カード（チートシート）」機能  
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教員採用試験対策：地理歴史科学習指導要領クイズ</title>
+    <style>
+        /* CSS変数（カラーパレット） */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #ecf0f1;
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --correct-color: #27ae60;
+            --incorrect-color: #e74c3c;
+            --border-radius: 8px;
+        }
+
+        /* 全体スタイリング */
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            scroll-behavior: smooth; /* スムーズスクロール */
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 1.5rem 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        header p {
+            margin: 0.5rem 0 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        /* カード型UI */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            transition: transform 0.2s ease;
+        }
+
+        /* クイズエリア */
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        #quiz-progress {
+            font-weight: bold;
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+        }
+
+        .quit-btn {
+            background-color: transparent;
+            border: 1px solid var(--incorrect-color);
+            color: var(--incorrect-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--border-radius);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quit-btn:hover {
+            background-color: var(--incorrect-color);
+            color: white;
+        }
+
+        .quit-btn.confirming {
+            background-color: var(--incorrect-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        #question-text {
+            font-size: 1.15rem;
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap; /* 改行を反映 */
+        }
+
+        /* 選択肢ボタン（レスポンシブ対応Flexbox） */
+        .options-container {
+            display: flex;
+            flex-direction: column; /* スマホでは縦積み */
+            gap: 12px;
+        }
+
+        @media (min-width: 600px) {
+            .options-container {
+                flex-direction: row;
+                flex-wrap: wrap; /* PC・タブレットでは折り返し */
+            }
+            .option-btn {
+                flex: 1 1 calc(50% - 12px); /* 2列配置 */
+            }
+        }
+
+        .option-btn {
+            background-color: transparent;
+            border: 2px solid var(--secondary-color);
+            color: var(--text-color);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        .option-btn.correct {
+            background-color: var(--correct-color);
+            border-color: var(--correct-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        .option-btn.incorrect {
+            background-color: var(--incorrect-color);
+            border-color: var(--incorrect-color);
+            color: white;
+            text-decoration: line-through;
+        }
+
+        /* 解説エリア */
+        #feedback-area {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--secondary-color);
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #feedback-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .feedback-correct { color: var(--correct-color); }
+        .feedback-incorrect { color: var(--incorrect-color); }
+
+        /* アクションボタン */
+        .action-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background-color: #1a252f;
+        }
+
+        /* 結果画面 */
+        #result-area {
+            text-align: center;
+            display: none;
+        }
+
+        #score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin: 1rem 0;
+        }
+
+        /* 穴埋め暗記カード */
+        #flashcards-section {
+            margin-top: 3rem;
+            text-align: left;
+        }
+
+        #flashcards-section h3 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
+        .flashcard {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s;
+        }
+
+        .flashcard:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .flashcard h4 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .flashcard p {
+            white-space: pre-wrap;
+            margin-bottom: 0;
+            font-size: 1.05rem;
+        }
+
+        .flashcard-explanation {
+            margin-top: 1rem !important;
+            padding-top: 1rem;
+            border-top: 1px dashed #ccc;
+            font-size: 0.95rem !important;
+            color: #555;
+            display: none; /* 初期状態は非表示 */
+            animation: fadeIn 0.3s;
+        }
+
+        .blank-spot {
+            display: inline-block;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            border: 2px dashed var(--secondary-color);
+            padding: 0.1rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            user-select: none;
+            transition: all 0.2s ease;
+            margin: 0 0.2rem;
+            font-size: 0.95em;
+            min-width: 3em;
+            text-align: center;
+        }
+
+        .blank-spot:hover {
+            background-color: #d6eaf8;
+        }
+
+        .blank-spot.revealed {
+            background-color: var(--correct-color);
+            color: white;
+            border: 2px solid var(--correct-color);
+        }
+        
+        .blank-spot.revealed:hover {
+            background-color: #219a52; /* 少し濃く */
+        }
+
+        .toggle-all-btn {
+            background-color: transparent;
+            border: 1px solid var(--secondary-color);
+            color: var(--secondary-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-all-btn:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        /* トップへ戻るボタン */
+        #back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        #back-to-top:hover {
+            transform: translateY(-5px);
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <header id="top">
+        <h1>教員採用試験対策クイズ</h1>
+        <p>高等学校学習指導要領（平成30年告示）地理歴史科</p>
+    </header>
+
+    <main>
+        <!-- クイズ画面 -->
+        <div class="card" id="quiz-card">
+            <div class="quiz-header">
+                <div id="quiz-progress">問題 1 / 5</div>
+                <button class="quit-btn" id="quit-btn" onclick="handleQuitClick()">途中で終了して結果へ</button>
+            </div>
+            <div id="question-text">ここに問題文が表示されます。</div>
+            
+            <div class="options-container" id="options-container">
+                <!-- 選択肢がJavaScriptで生成されます -->
+            </div>
+
+            <div id="feedback-area">
+                <h3 id="feedback-title"></h3>
+                <p id="explanation-text"></p>
+                <button class="action-btn" id="next-btn" onclick="nextQuestion()">次の問題へ</button>
+            </div>
+        </div>
+
+        <!-- 結果画面 -->
+        <div class="card" id="result-area">
+            <h2 id="result-title">学習完了！お疲れ様でした。</h2>
+            <p id="result-subtitle">あなたの正答率は…</p>
+            <div id="score-display">0 / 28</div>
+            <p id="result-message"></p>
+            <div id="result-action-container">
+                <!-- ここにボタンが動的に追加されます -->
+            </div>
+
+            <!-- 穴埋め暗記カード一覧エリア -->
+            <div id="flashcards-section" style="display: none;">
+                <hr style="margin: 3rem 0; border: none; border-top: 2px dashed #bdc3c7;">
+                <h3>📚 復習用 穴埋め暗記カード</h3>
+                <p style="font-size: 0.95rem; color: #666; margin-bottom: 1.5rem;">タップすると正解が表示・非表示になります。知識の定着に活用してください。</p>
+                <div style="margin-bottom: 1rem; display: flex; gap: 10px;">
+                    <button class="toggle-all-btn" onclick="toggleAllBlanks(true)">すべて表示する</button>
+                    <button class="toggle-all-btn" onclick="toggleAllBlanks(false)">すべて隠す</button>
+                </div>
+                <div id="flashcards-container"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- トップへ戻るボタン -->
+    <button id="back-to-top" title="トップへ戻る" onclick="scrollToTop()">↑</button>
+
+    <script>
+        // クイズデータ（提供された学習指導要領の内容に基づく全28問網羅版）
+        const quizData = [
+            {
+                question: "【第1款 目標】\n「（　　）的な見方・考え方を働かせ、課題を追究したり解決したりする活動を通して、広い視野に立ち、グローバル化する国際社会に主体的に生きる平和で民主的な国家及び社会の有為な形成者に必要な公民としての資質・能力を育成することを目指す。」",
+                options: ["歴史", "地理", "社会", "総合"],
+                correctAnswer: 2,
+                explanation: "正解は「社会」です。平成30年告示の学習指導要領では、地理歴史科および公民科において共通して「社会的な見方・考え方を働かせ」ることが目標の柱として掲げられています。"
+            },
+            {
+                question: "【第1款 目標（知識・技能）】\n「現代世界の地域的特色と日本及び世界の歴史の展開に関して理解するとともに、調査や諸資料から様々な情報を適切かつ効果的に調べまとめる（　　）を身に付けるようにする。」",
+                options: ["知識", "技能", "能力", "手法"],
+                correctAnswer: 1,
+                explanation: "正解は「技能」です。「知識・技能」の項目では、情報を適切かつ効果的に調べまとめる『技能』を身に付けることが明記されています。"
+            },
+            {
+                question: "【第1款 目標（思考・判断・表現）】\n「地理や歴史に関わる事象の意味や意義、特色や相互の関連を、（　　）などを活用して多面的・多角的に考察したり、それらを基に議論したりする力を養う。」",
+                options: ["知識", "概念", "技能", "資料"],
+                correctAnswer: 1,
+                explanation: "正解は「概念」です。「概念などを活用して多面的・多角的に考察」することは、新しい学習指導要領の「思考・判断・表現」の育成において極めて重要なキーワードです。"
+            },
+            {
+                question: "【第1款 目標（主体的に学習に取り組む態度）】\n「我が国の国土や歴史に対する（　　）、他国や他国の文化を尊重することの大切さについての自覚を深める。」",
+                options: ["愛着", "誇り", "愛情", "理解"],
+                correctAnswer: 2,
+                explanation: "正解は「愛情」です。我が国の国土や歴史に対する『愛情』、他国や他国の文化を『尊重』することの大切さについての自覚を深めることが求められています。"
+            },
+            {
+                question: "【第1 地理総合の目標】\n「地理に関わる諸事象に関して、世界の生活文化の多様性や、（　　）、地域や地球的課題への取組などを理解するとともに…」",
+                options: ["環境保全", "防災", "観光", "産業構造"],
+                correctAnswer: 1,
+                explanation: "正解は「防災」です。地理総合の目標には、生活文化の多様性、防災、地球的課題への取組についての理解が明記されています。"
+            },
+            {
+                question: "【第1 地理総合の目標（思考・判断・表現）】\n「地理的な課題の解決に向けて（　　）したりする力や、考察、（　　）したことを効果的に説明したり、それらを基に議論したりする力を養う。」",
+                options: ["分析", "総合", "構想", "推論"],
+                correctAnswer: 2,
+                explanation: "正解は「構想」です。課題解決に向けて『構想』し、それを説明・議論する力が求められています。"
+            },
+            {
+                question: "【第1 地理総合の内容】\n「日常生活の中で見られる様々な地図の読図などを基に、地図や（　　）の役割や有用性などについて理解すること。」",
+                options: ["全地球測位システム", "衛星画像", "空中写真", "地理情報システム"],
+                correctAnswer: 3,
+                explanation: "正解は「地理情報システム」です。地理情報システム（GIS）の役割や有用性について理解することが明記されています。"
+            },
+            {
+                question: "【第1 地理総合の内容構成】\n内容の大きな柱の一つであるCは、「（　　）地域づくりと私たち」である。",
+                options: ["グローバルな", "持続可能な", "主体的な", "創造的な"],
+                correctAnswer: 1,
+                explanation: "正解は「持続可能な」です。地理総合は「A 地図や地理情報システムで捉える現代世界」「B 国際理解と国際協力」「C 持続可能な地域づくりと私たち」で構成されます。"
+            },
+            {
+                question: "【第1 地理総合の内容の取扱い】\n地理的技能を身に付けるための指導において、十分に活用することが明記されている教科用図書はどれか。",
+                options: ["地図帳", "地図", "資料集", "統計"],
+                correctAnswer: 1,
+                explanation: "正解は「地図」です。学習指導要領上は「教科用図書『地図』を十分に活用すること」と表記されています。"
+            },
+            {
+                question: "【第1 地理総合の内容の取扱い】\n「学習過程では取り扱う内容の（　　）を踏まえることとし、政治的、経済的、生物的、地学的な事象なども必要に応じて扱うこともできるが…」",
+                options: ["歴史的背景", "地理的条件", "国際的動向", "地域的特色"],
+                correctAnswer: 0,
+                explanation: "正解は「歴史的背景」です。地理の学習であっても、取り扱う内容の『歴史的背景』を踏まえるよう示されています。"
+            },
+            {
+                question: "【第2 地理探究の目標】\n「地理に関わる諸事象に関して、世界の空間的な諸事象の（　　）、傾向性や、世界の諸地域の地域的特色や課題などを理解するとともに…」",
+                options: ["多様性", "規則性", "普遍性", "特殊性"],
+                correctAnswer: 1,
+                explanation: "正解は「規則性」です。空間的な諸事象の『規則性』や傾向性について理解することが目標に掲げられています。"
+            },
+            {
+                question: "【第2 地理探究の内容構成】\n内容の大きな柱の一つであるAは、「現代世界の（　　）的考察」である。",
+                options: ["総合", "系統地理", "地誌", "主題"],
+                correctAnswer: 1,
+                explanation: "正解は「系統地理」です。地理探究は「A 現代世界の系統地理的考察」「B 現代世界の地誌的考察」「C 現代世界におけるこれからの日本の国土像」で構成されます。"
+            },
+            {
+                question: "【第3 歴史総合の目標】\n「（　　）の歴史の変化に関わる諸事象について、世界とその中の日本を広く相互的な視野から捉え…」",
+                options: ["古代から現代", "前近代", "近世以降", "近現代"],
+                correctAnswer: 3,
+                explanation: "正解は「近現代」です。歴史総合は主に『近現代』の歴史の変化について、世界と日本の関係性に着目して学習します。"
+            },
+            {
+                question: "【第3 歴史総合の目標（主体的に学習に取り組む態度）】\n「多面的・多角的な考察や深い理解を通して涵養される（　　）としての自覚、我が国の歴史に対する愛情…を深める。」",
+                options: ["国際人", "主権者", "日本国民", "公民"],
+                correctAnswer: 2,
+                explanation: "正解は「日本国民」です。よりよい社会の実現や、日本国民としての自覚、他国文化の尊重の大切さの自覚を深めることが求められます。"
+            },
+            {
+                question: "【第3 歴史総合の内容構成】\n内容の大きな柱の一つであるCは、「国際秩序の変化や（　　）と私たち」である。",
+                options: ["大衆化", "近代化", "民主化", "情報化"],
+                correctAnswer: 0,
+                explanation: "正解は「大衆化」です。歴史総合の内容は「B 近代化と私たち」「C 国際秩序の変化や大衆化と私たち」「D グローバル化と私たち」等で構成されます。"
+            },
+            {
+                question: "【第4 日本史探究の目標】\n「我が国の歴史の展開に関わる諸事象について、地理的条件や世界の歴史と関連付けながら（　　）に捉えて理解するとともに…」",
+                options: ["客観的", "多面的", "総合的", "構造的"],
+                correctAnswer: 2,
+                explanation: "正解は「総合的」です。日本史探究では、地理的条件や世界の歴史と関連付けながら『総合的』に捉えて理解することが重要視されています。"
+            },
+            {
+                question: "【第4 日本史探究の内容構成】\n内容の大きな柱の一つであるAは、「原始・古代の日本と（　　）」である。",
+                options: ["東アジア", "大陸", "朝鮮半島", "アジア諸国"],
+                correctAnswer: 0,
+                explanation: "正解は「東アジア」です。日本史探究は「A 原始・古代の日本と東アジア」から始まり、世界との関係性を軸に展開します。"
+            },
+            {
+                question: "【第4 日本史探究の内容の取扱い（文化に関する指導）】\n「衣食住や風習・信仰などの（　　）についても、時代の特色や地域社会の様子などと関連付け…扱うようにすること。」",
+                options: ["伝統文化", "大衆文化", "精神文化", "生活文化"],
+                correctAnswer: 3,
+                explanation: "正解は「生活文化」です。政治や高雅な文化だけでなく、衣食住などの『生活文化』も重視して扱うことが示されています。"
+            },
+            {
+                question: "【第4 日本史探究の内容の取扱い（文化に関する指導）】\n前問の生活文化などを扱う際、「（　　）や考古学などの成果の活用を図りながら扱うようにすること。」",
+                options: ["人類学", "社会学", "地理学", "民俗学"],
+                correctAnswer: 3,
+                explanation: "正解は「民俗学」です。風習や信仰などの生活文化の理解を深めるため、『民俗学』や考古学の成果を活用することが求められます。"
+            },
+            {
+                question: "【第5 世界史探究の目標】\n「世界の歴史の（　　）と展開に関わる諸事象について、地理的条件や日本の歴史と関連付けながら理解するとともに…」",
+                options: ["大きな枠組み", "歴史的背景", "構造的特質", "空間的広がり"],
+                correctAnswer: 0,
+                explanation: "正解は「大きな枠組み」です。世界史探究では、世界の歴史の『大きな枠組み』と展開に関わる諸事象を日本の歴史と関連付けます。"
+            },
+            {
+                question: "【第5 世界史探究の内容の取扱い】\n「活用する資料の選択に際しては、生徒の興味・関心、（　　）の実態などに十分配慮して行うこと。」",
+                options: ["学校や地域", "現代社会", "国際社会", "学習進度"],
+                correctAnswer: 0,
+                explanation: "正解は「学校や地域」です。資料選択の際は、全国一律ではなく、各『学校や地域』の実態にも配慮することが求められています。"
+            },
+            {
+                question: "【第3款 指導計画の作成】\n「単元など内容や時間のまとまりを見通して，その中で育む資質・能力の育成に向けて，生徒の主体的・（　　）で深い学びの実現を図るようにすること。」",
+                options: ["協働的", "対話的", "実践的", "探究的"],
+                correctAnswer: 1,
+                explanation: "正解は「対話的」です。新学習指導要領全体のキーワードである「主体的・対話的で深い学び（アクティブ・ラーニングの視点）」がここでも強調されています。"
+            },
+            {
+                question: "【第3款 指導計画の作成】\n地理歴史科の目標を達成するため、特に関連を図ることが明記されている教科はどれか。",
+                options: ["国語科", "理科", "外国語科", "公民科"],
+                correctAnswer: 3,
+                explanation: "正解は「公民科」です。「地理歴史科の目標を達成するため，公民科などとの関連を図るとともに…」と明記され、社会系教科の連携が重視されています。"
+            },
+            {
+                question: "【第3款 指導計画の作成（履修構造）】\n各科目の履修構造について正しいものはどれか。",
+                options: [
+                    "「地理総合」と「日本史探究」が必履修科目である。",
+                    "「地理総合」と「歴史総合」を履修した後に、選択科目である探究科目を履修する。",
+                    "全ての生徒が「世界史探究」を履修しなければならない。",
+                    "「歴史総合」は「日本史探究」を履修した生徒のみ選択できる。"
+                ],
+                correctAnswer: 1,
+                explanation: "正解は「『地理総合』と『歴史総合』を履修した後に、選択科目である探究科目を履修する」です。必履修科目は「地理総合」と「歴史総合」です。"
+            },
+            {
+                question: "【第3款 指導計画の作成】\n「（　　）生徒などについては，学習活動を行う場合に生じる困難さに応じた指導内容や指導方法の工夫を計画的，組織的に行うこと。」",
+                options: ["特別な支援を要する", "帰国した", "外国につながる", "障害のある"],
+                correctAnswer: 3,
+                explanation: "正解は「障害のある」です。特別な支援に関する記述として、「障害のある生徒などについては…計画的，組織的に行うこと」と明記されています。"
+            },
+            {
+                question: "【第3款 内容の取扱い（見解の多様性）】\n「多様な見解のある事柄、未確定な事柄を取り上げる場合には（中略）生徒が多面的・多角的に考察したり，事実を客観的に捉え、（　　）に判断したりすることを妨げることのないよう留意すること。」",
+                options: ["主体的", "論理的", "公正", "多角的"],
+                correctAnswer: 2,
+                explanation: "正解は「公正」です。特定の事柄を強調し過ぎるなどの偏った取扱いを避け、生徒が事実を客観的に捉え、『公正』に判断できるように留意する必要があります。"
+            },
+            {
+                question: "【第3款 内容の取扱い（情報の収集）】\n「課題の追究や解決の見通しをもって生徒が主体的に情報手段を活用できるようにするとともに、（　　）の指導にも留意すること。」",
+                options: ["情報セキュリティ", "情報モラル", "プログラミング", "メディア・リテラシー"],
+                correctAnswer: 1,
+                explanation: "正解は「情報モラル」です。コンピュータや情報通信ネットワークを積極的に活用するにあたり、『情報モラル』の指導に留意することが示されています。"
+            },
+            {
+                question: "【第3款 内容の指導に当たっての配慮事項】\n「教育基本法第14条及び第15条の規定に基づき，適切に行うよう特に慎重に配慮して，政治及び（　　）に関する教育を行うものとする。」",
+                options: ["経済", "道徳", "宗教", "人権"],
+                correctAnswer: 2,
+                explanation: "正解は「宗教」です。教育基本法第14条（政治教育）及び第15条（宗教教育）に基づき、特定の党派や宗教のための教育を避けつつ、これらに関する教育を適切に行うことが求められます。"
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let currentQuizList = []; // 現在出題中の問題リスト
+        let reviewQueue = []; // 間違えた問題のキュー
+        let isReviewMode = false; // 復習モードのフラグ
+        let isAnswered = false; // 現在の問題が解答済みかどうかのフラグ
+        let quitConfirmTimeout; // 終了確認のタイムアウト
+
+        // DOM要素の取得
+        const progressEl = document.getElementById('quiz-progress');
+        const questionEl = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackArea = document.getElementById('feedback-area');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const explanationText = document.getElementById('explanation-text');
+        const nextBtn = document.getElementById('next-btn');
+        const quizCard = document.getElementById('quiz-card');
+        const resultArea = document.getElementById('result-area');
+        const scoreDisplay = document.getElementById('score-display');
+        const resultMessage = document.getElementById('result-message');
+        const resultTitle = document.getElementById('result-title');
+        const resultSubtitle = document.getElementById('result-subtitle');
+        const actionContainer = document.getElementById('result-action-container');
+        const backToTopBtn = document.getElementById('back-to-top');
+        const quitBtn = document.getElementById('quit-btn');
+        const flashcardsSection = document.getElementById('flashcards-section');
+
+        // クイズの初期化・開始
+        function initQuiz() {
+            currentQuizList = [...quizData];
+            reviewQueue = [];
+            isReviewMode = false;
+            currentQuestionIndex = 0;
+            score = 0;
+            isAnswered = false;
+            resetQuitButton();
+            
+            resultArea.style.display = 'none';
+            flashcardsSection.style.display = 'none';
+            quizCard.style.display = 'block';
+            nextBtn.textContent = "次の問題へ";
+            
+            if (resultTitle && resultSubtitle) {
+                resultTitle.textContent = "学習完了！お疲れ様でした。";
+                resultSubtitle.style.display = "block";
+            }
+
+            loadQuestion();
+        }
+
+        // クイズの表示
+        function loadQuestion() {
+            const currentQuiz = currentQuizList[currentQuestionIndex];
+            isAnswered = false;
+            resetQuitButton();
+            
+            // 進捗と問題文の更新
+            if (isReviewMode) {
+                progressEl.textContent = `復習モード：問題 ${currentQuestionIndex + 1} / ${currentQuizList.length}`;
+            } else {
+                progressEl.textContent = `問題 ${currentQuestionIndex + 1} / ${currentQuizList.length}`;
+            }
+            questionEl.textContent = currentQuiz.question;
+            
+            // 選択肢のクリアと生成
+            optionsContainer.innerHTML = '';
+            currentQuiz.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = `${index + 1}. ${option}`;
+                button.classList.add('option-btn');
+                button.onclick = () => checkAnswer(index, button);
+                optionsContainer.appendChild(button);
+            });
+
+            // 解説エリアを非表示
+            feedbackArea.style.display = 'none';
+        }
+
+        // 解答チェック
+        function checkAnswer(selectedIndex, selectedButton) {
+            if (isAnswered) return; // 二重クリック防止
+            isAnswered = true;
+
+            const currentQuiz = currentQuizList[currentQuestionIndex];
+            const optionButtons = document.querySelectorAll('.option-btn');
+            
+            // 全ボタンを無効化
+            optionButtons.forEach(btn => btn.disabled = true);
+
+            // 正誤判定
+            if (selectedIndex === currentQuiz.correctAnswer) {
+                selectedButton.classList.add('correct');
+                feedbackTitle.textContent = "⭕ 正解！";
+                feedbackTitle.className = "feedback-correct";
+                if (!isReviewMode) {
+                    score++;
+                }
+            } else {
+                selectedButton.classList.add('incorrect');
+                // 正解のボタンを強調
+                optionButtons[currentQuiz.correctAnswer].classList.add('correct');
+                feedbackTitle.textContent = "❌ 不正解...";
+                feedbackTitle.className = "feedback-incorrect";
+                
+                // 間違えた問題を復習キューに追加
+                reviewQueue.push(currentQuiz);
+            }
+
+            // 解説の表示
+            explanationText.textContent = currentQuiz.explanation;
+            feedbackArea.style.display = 'block';
+
+            // 最終問題の場合はボタンのテキストを変更
+            if (currentQuestionIndex === currentQuizList.length - 1) {
+                if (isReviewMode && reviewQueue.length > 0) {
+                    nextBtn.textContent = "間違えた問題をもう一度復習する";
+                } else {
+                    nextBtn.textContent = "結果を見る";
+                }
+            } else {
+                nextBtn.textContent = "次の問題へ";
+            }
+        }
+
+        // 次の問題へ（または結果画面・次の復習ラウンドへ）
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < currentQuizList.length) {
+                loadQuestion();
+            } else {
+                // ラウンド終了
+                if (isReviewMode) {
+                    if (reviewQueue.length > 0) {
+                        // まだ間違えた問題がある場合は次の復習ラウンドへ
+                        startReviewRound();
+                    } else {
+                        // 復習完了
+                        showPerfectResult();
+                    }
+                } else {
+                    // 初回ラウンド終了
+                    showResult();
+                }
+            }
+        }
+
+        // 復習ラウンドの開始
+        function startReviewRound() {
+            isReviewMode = true;
+            currentQuizList = [...reviewQueue];
+            reviewQueue = []; // 新しいラウンドのためにキューを空にする
+            currentQuestionIndex = 0;
+            isAnswered = false;
+            resetQuitButton();
+            
+            resultArea.style.display = 'none';
+            flashcardsSection.style.display = 'none';
+            quizCard.style.display = 'block';
+            nextBtn.textContent = "次の問題へ";
+            
+            loadQuestion();
+        }
+
+        // 結果画面の表示
+        function showResult() {
+            quizCard.style.display = 'none';
+            resultArea.style.display = 'block';
+            scoreDisplay.textContent = `${score} / ${quizData.length}`;
+            
+            actionContainer.innerHTML = ''; // ボタン領域を初期化
+
+            let msg = "";
+            const percentage = score / quizData.length;
+            if (percentage === 1) {
+                msg = "全問正解！学習指導要領の読み込みは完璧ですね！";
+                
+                const restartBtn = document.createElement('button');
+                restartBtn.className = 'action-btn';
+                restartBtn.textContent = "最初からやり直す";
+                restartBtn.onclick = initQuiz;
+                actionContainer.appendChild(restartBtn);
+            } else {
+                if (percentage >= 0.6) {
+                    msg = "素晴らしい成績です！間違えた箇所を復習して本番に備えましょう。";
+                } else {
+                    msg = "学習指導要領をもう一度確認し、頻出キーワードを押さえましょう。";
+                }
+                
+                const reviewBtn = document.createElement('button');
+                reviewBtn.className = 'action-btn';
+                reviewBtn.style.backgroundColor = 'var(--incorrect-color)';
+                reviewBtn.textContent = `間違えた問題（${reviewQueue.length}問）を復習する`;
+                reviewBtn.onclick = startReviewRound;
+                actionContainer.appendChild(reviewBtn);
+
+                const restartBtn = document.createElement('button');
+                restartBtn.className = 'action-btn';
+                restartBtn.style.marginTop = '1rem';
+                restartBtn.textContent = "最初からやり直す";
+                restartBtn.onclick = initQuiz;
+                actionContainer.appendChild(restartBtn);
+            }
+            resultMessage.textContent = msg;
+            
+            // 暗記カードの生成と表示
+            generateFlashcards();
+        }
+
+        // 復習完了画面の表示
+        function showPerfectResult() {
+            quizCard.style.display = 'none';
+            resultArea.style.display = 'block';
+            
+            resultTitle.textContent = "復習完了！🎉";
+            resultSubtitle.style.display = "none";
+            scoreDisplay.textContent = "PERFECT";
+            resultMessage.textContent = "間違えた問題をすべて正解できました。この調子で頑張りましょう！";
+            
+            actionContainer.innerHTML = ''; // ボタン領域を初期化
+            
+            const restartBtn = document.createElement('button');
+            restartBtn.className = 'action-btn';
+            restartBtn.textContent = "最初からやり直す";
+            restartBtn.onclick = initQuiz;
+            actionContainer.appendChild(restartBtn);
+
+            // 暗記カードの生成と表示
+            generateFlashcards();
+        }
+
+        // 途中で終了する処理（2段階確認）
+        function handleQuitClick() {
+            if (quitBtn.classList.contains('confirming')) {
+                clearTimeout(quitConfirmTimeout);
+                finishQuizEarly();
+            } else {
+                quitBtn.textContent = "本当に終了しますか？";
+                quitBtn.classList.add('confirming');
+                quitConfirmTimeout = setTimeout(resetQuitButton, 3000);
+            }
+        }
+
+        // 終了ボタンの表示リセット
+        function resetQuitButton() {
+            if(quitBtn) {
+                quitBtn.textContent = "途中で終了して結果へ";
+                quitBtn.classList.remove('confirming');
+            }
+        }
+
+        // 早期終了して結果画面へスキップ
+        function finishQuizEarly() {
+            // 現在の問題が未解答の場合、現在の問題以降をすべて復習キューに追加
+            // 解答済みの場合は、現在の問題の「次の問題」から復習キューに追加
+            let startIndex = isAnswered ? currentQuestionIndex + 1 : currentQuestionIndex;
+            
+            for (let i = startIndex; i < currentQuizList.length; i++) {
+                if (!reviewQueue.includes(currentQuizList[i])) {
+                    reviewQueue.push(currentQuizList[i]);
+                }
+            }
+            
+            if (isReviewMode && reviewQueue.length === 0) {
+                showPerfectResult();
+            } else {
+                showResult();
+            }
+        }
+
+        // 穴埋め暗記カードのトグル処理（解説の連動表示）
+        function toggleBlank(el) {
+            const card = el.closest('.flashcard');
+            const explanation = card.querySelector('.flashcard-explanation');
+            
+            if (el.classList.contains('revealed')) {
+                el.textContent = el.getAttribute('data-placeholder');
+                el.classList.remove('revealed');
+            } else {
+                el.textContent = el.getAttribute('data-answer');
+                el.classList.add('revealed');
+            }
+
+            // カード内の穴埋めが1つでも開いていれば解説を表示、すべて閉じていれば非表示
+            const allBlanks = card.querySelectorAll('.blank-spot');
+            const anyRevealed = Array.from(allBlanks).some(blank => blank.classList.contains('revealed'));
+            
+            if (anyRevealed) {
+                explanation.style.display = 'block';
+            } else {
+                explanation.style.display = 'none';
+            }
+        }
+
+        // 暗記カードすべて表示/隠すの処理（解説の連動表示）
+        function toggleAllBlanks(show) {
+            const blanks = document.querySelectorAll('.blank-spot');
+            blanks.forEach(el => {
+                if (show && !el.classList.contains('revealed')) {
+                    el.textContent = el.getAttribute('data-answer');
+                    el.classList.add('revealed');
+                } else if (!show && el.classList.contains('revealed')) {
+                    el.textContent = el.getAttribute('data-placeholder');
+                    el.classList.remove('revealed');
+                }
+            });
+
+            // 解説も一括で表示・非表示を切り替え
+            const explanations = document.querySelectorAll('.flashcard-explanation');
+            explanations.forEach(exp => {
+                exp.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // 暗記カードの生成処理
+        function generateFlashcards() {
+            const container = document.getElementById('flashcards-container');
+            container.innerHTML = ''; // 初期化
+            
+            quizData.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = 'flashcard';
+                
+                // タイトル行（例：【第1款 目標】）の抽出
+                let qText = q.question;
+                let titleMatch = qText.match(/^【(.*?)】/);
+                let titleStr = titleMatch ? titleMatch[0] : `問題 ${index + 1}`;
+                if (titleMatch) {
+                    qText = qText.replace(titleMatch[0], '').trim();
+                }
+
+                const correctAnswerText = q.options[q.correctAnswer];
+                let htmlText = '';
+
+                // （　　）が含まれている場合は穴埋め形式に置換
+                if (qText.includes('（　　）')) {
+                    // /g を使って全ての一致部分を置換
+                    htmlText = qText.replace(/（　　）/g, `<span class="blank-spot" data-answer="${correctAnswerText}" data-placeholder="　　　" onclick="toggleBlank(this)">　　　</span>`);
+                } else {
+                    // 含まれていない場合（正しいものはどれか等）は末尾に回答を追加
+                    htmlText = `${qText}<br><br><strong>正解：</strong><span class="blank-spot" data-answer="${correctAnswerText}" data-placeholder="　　　" onclick="toggleBlank(this)">　　　</span>`;
+                }
+
+                card.innerHTML = `
+                    <h4>${titleStr}</h4>
+                    <p>${htmlText}</p>
+                    <p class="flashcard-explanation"><strong>解説：</strong>${q.explanation}</p>
+                `;
+                container.appendChild(card);
+            });
+            
+            flashcardsSection.style.display = 'block';
+        }
+
+        // トップへ戻るボタンのスクロール制御
+        window.onscroll = function() {
+            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                backToTopBtn.style.display = "flex";
+            } else {
+                backToTopBtn.style.display = "none";
+            }
+        };
+
+        // JSによるスムーズスクロール（aタグのアンカーリンク不使用）
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // 初回ロード時の実行
+        initQuiz();
+
+    </script>
+</body>
+</html>
